@@ -1,0 +1,264 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天羅矩陣 2.0 ・ 基礎事實收集器</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --panel-bg: #ffffff;
+            --primary-color: #2b579a;
+            --border-color: #dcdfe6;
+            --text-color: #333333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .input-box {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-box label {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .input-box input, .input-box select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn-group {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-add { background-color: #4caf50; color: white; }
+        .btn-export { background-color: #2b579a; color: white; }
+        .btn-clear { background-color: #f44336; color: white; }
+        
+        .table-container {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #f5f7fa;
+            color: #909399;
+            font-weight: bold;
+        }
+        tr:hover { background-color: #f9fafc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>天羅矩陣 2.0 ・ 基礎事實數據收集器</h2>
+    
+    <!-- 表單輸入 -->
+    <div class="form-group" id="matrixForm">
+        <div class="input-box">
+            <label>姓名</label>
+            <input type="text" id="name" placeholder="例如：白侑玄">
+        </div>
+        <div class="input-box">
+            <label>改名備註</label>
+            <input type="text" id="alias" placeholder="例如：原名白忻璇">
+        </div>
+        <div class="input-box">
+            <label>生日</label>
+            <input type="text" id="birthday" placeholder="例如：1982/11/05">
+        </div>
+        <div class="input-box">
+            <label>日主格神</label>
+            <input type="text" id="bazi" placeholder="例如：壬水七殺格">
+        </div>
+        <div class="input-box">
+            <label>關係類別</label>
+            <select id="relation">
+                <option value="A:核心血親">A:核心血親</option>
+                <option value="B:摯友摯交">B:摯友摯交</option>
+                <option value="C:職場校友" selected>C:職場校友</option>
+                <option value="D:一般社群">D:一般社群</option>
+            </select>
+        </div>
+        <div class="input-box">
+            <label>當前職業</label>
+            <input type="text" id="job" placeholder="例如：長照人員">
+        </div>
+        <div class="input-box">
+            <label>當前職業適合度</label>
+            <input type="text" id="jobFit" placeholder="例如：A+ 頂級苦行僧">
+        </div>
+        <div class="input-box">
+            <label>隱藏天賦職業</label>
+            <input type="text" id="talent" placeholder="例如：心靈導師">
+        </div>
+        <div class="input-box">
+            <label>能量互補指數 (1-5)</label>
+            <input type="number" id="complement" min="1" max="5" value="3">
+        </div>
+        <div class="input-box">
+            <label>人際網絡圈標籤</label>
+            <input type="text" id="network" placeholder="例如：#高醫長照圈">
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn-add" onclick="addData()">新增至矩陣</button>
+            <button class="btn-export" onclick="exportCSV()">導出 CSV 檔</button>
+            <button class="btn-clear" onclick="clearData()">清空快取</button>
+        </div>
+    </div>
+
+    <!-- 數據預覽表格 -->
+    <div class="table-container">
+        <h3>當前本地庫存清單 (<span id="dataCount">0</span> 筆)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>姓名</th><th>改名備註</th><th>生日</th><th>日主格神</th><th>關係類別</th>
+                    <th>當前職業</th><th>當前職業適合度</th><th>隱藏天賦職業</th><th>互補指數</th><th>網絡標籤</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+                <!-- 動態插入 -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 初始化讀取 localstorage
+    let matrixData = JSON.parse(localStorage.getItem('天羅矩陣數據')) || [];
+
+    function renderTable() {
+        const tbody = document.getElementById('dataTableBody');
+        tbody.innerHTML = '';
+        document.getElementById('dataCount').innerText = matrixData.length;
+        
+        matrixData.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.name}</td><td>${item.alias}</td><td>${item.birthday}</td><td>${item.bazi}</td><td>${item.relation}</td>
+                <td>${item.job}</td><td>${item.jobFit}</td><td>${item.talent}</td><td>${item.complement}</td><td>${item.network}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function addData() {
+        const fields = ['name', 'alias', 'birthday', 'bazi', 'relation', 'job', 'jobFit', 'talent', 'complement', 'network'];
+        const item = {};
+        
+        // 檢查必填
+        if(!document.getElementById('name').value.trim()) {
+            alert('請至少輸入姓名！');
+            return;
+        }
+
+        fields.forEach(f => {
+            item[f] = document.getElementById(f).value.trim();
+        });
+
+        matrixData.push(item);
+        localStorage.setItem('天羅矩陣數據', JSON.stringify(matrixData));
+        renderTable();
+        
+        // 清空輸入框(保留下拉與默認)
+        fields.forEach(f => {
+            if(f !== 'relation' && f !== 'complement') document.getElementById(f).value = '';
+        });
+    }
+
+    function exportCSV() {
+        if (matrixData.length === 0) {
+            alert('目前沒有數據可供導出！');
+            return;
+        }
+
+        const headers = ['姓名', '改名備註', '生日', '日主格神', '關係類別', '當前職業', '當前職業適合度', '隱藏天賦職業', '能量互補指數', '人際網絡圈標籤'];
+        
+        // 處理 CSV 內容與 Windows Excel 亂碼 (使用 BOM)
+        let csvContent = "\uFEFF"; 
+        csvContent += headers.map(h => `"${h}"`).join(",") + "\r\n";
+
+        matrixData.forEach(item => {
+            const row = [
+                item.name, item.alias, item.birthday, item.bazi, item.relation,
+                item.job, item.jobFit, item.talent, item.complement, item.network
+            ].map(val => `"${String(val).replace(/"/g, '""')}"`); // 防呆引號
+            csvContent += row.join(",") + "\r\n";
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `天羅矩陣基礎事實_${new Date().toISOString().slice(0,10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function clearData() {
+        if(confirm('確定要清空本地所有快取數據嗎？導出前請三思。')) {
+            matrixData = [];
+            localStorage.removeItem('天羅矩陣數據');
+            renderTable();
+        }
+    }
+
+    // 網頁載入時渲染
+    renderTable();
+</script>
+</body>
+</html>
