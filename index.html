@@ -1,144 +1,170 @@
-<!DOCTYPE html>
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧零售商品檢視系統 (唯讀版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>條碼查詢</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <style>
         :root {
-            --primary: #007bff;
-            --bg-color: #f4f6f9; 
-            --card-bg: #ffffff;
+            --bg-color: #f4f6f9; --card-bg: #ffffff;
         }
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { margin: 0; padding: 0; background-color: var(--bg-color); padding-bottom: 20px; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); padding-bottom: 60px; }
         
         /* Sticky Header */
         header {
             position: sticky; top: 0; z-index: 1000; background: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding: 10px; margin-bottom: 15px;
         }
-        .header-title { font-size: 1.2em; font-weight: bold; color: var(--primary); margin-bottom: 5px; }
-        .header-stats { font-size: 0.85em; color: #666; }
+        .header-stats { font-size: 0.85em; color: #666; margin-bottom: 5px; }
         
         /* Layout & Cards */
         .container { padding: 0 10px; max-width: 100%; margin: 0 auto; }
-        
-        .card { 
-            background: var(--card-bg); border-radius: 8px; padding: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex;
-            flex-direction: column; justify-content: space-between; min-width: 0;
+
+        /* =============================================
+           修正1：卡片基礎樣式 - 移除重複定義，統一為一份
+           ============================================= */
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+            word-break: break-all;
         }
-        .card-title { font-weight: bold; font-size: 1.1em; margin-bottom: 5px; word-break: break-all; }
-        .card-sub { font-size: 0.9em; color: #555; margin-bottom: 8px; }
+
+        /* =============================================
+           修正2：card-title 移除固定高度，讓文字自然展開
+           ============================================= */
+        .card-title {
+            font-weight: bold;
+            font-size: 1em;
+            margin-bottom: 5px;
+            word-break: break-all;
+            white-space: normal;
+            line-height: 1.3;
+        }
+        .card-down { background-color: #ffe6ee; }
+        .down-label {
+            color: #c2185b;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
         
         /* Inputs */
-        input, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
         
-        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 5px;}
+        .flex-row { display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; margin-bottom: 10px; }
         .flex-row > * { flex: 1; }
         
-        svg.barcode { width: 100% !important; height: auto !important; max-height: 70px; }
+        svg.barcode { width: 100%; max-height: 80px; }
 
-        /* 網格佈局 */
-        #searchResult {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 12px;
-            padding: 5px 0;
+        /* =============================================
+           修正3：搜尋網格 - 手機預設兩欄，平板/桌機四欄
+           ============================================= */
+        .search-grid-container {
+            display: flex;
+            flex-wrap: wrap;
             width: 100%;
-            align-items: stretch;
+            margin: 0;
+            padding: 0;
         }
 
-        @media (max-width: 350px) {
-            #searchResult { grid-template-columns: 1fr; }
+        .search-column {
+            flex: 0 0 50%;       /* 手機：兩欄 */
+            max-width: 50%;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+
+        /* 平板以上：五欄 */
+        @media screen and (min-width: 900px) {
+            .search-column {
+                flex: 0 0 20%;
+                max-width: 20%;
+            }
+        }
+
+        .card svg.barcode {
+            width: 100% !important;
+            height: auto !important;
+            max-height: 60px;
         }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-title">智慧零售商品檢視系統</div>
-    <div class="header-stats" id="headerStats">狀態：準備載入資料...</div>
+    <div class="header-stats" id="headerStats">資料統計：總導入 0 | 合併數 0 | 總筆數 0</div>
 </header>
 
 <div class="container">
-    <div id="searchFilters">
-        <div class="flex-row">
-            <select id="searchC1" onchange="renderSearch()"><option value="">C1: 全部搜尋</option></select>
-            <select id="searchEvent" onchange="renderSearch()"><option value="">Event: 全部搜尋</option></select>
+    <div id="search">
+        <div id="searchFilters">
+            <div class="flex-row">
+                <select id="searchEvent" onchange="renderSearch()"><option value="">Event: 全部搜尋</option></select>
+                <input type="text" id="searchKeyword1" placeholder="關鍵字 (ID/Name)" oninput="renderSearch()">
+            </div>
         </div>
-        <div class="flex-row">
-            <input type="text" id="searchKeyword1" placeholder="關鍵字 1 (ID/Name)" oninput="renderSearch()">
-            <input type="text" id="searchKeyword2" placeholder="關鍵字 2 (ID/Name)" oninput="renderSearch()">
-        </div>
+        <div class="header-stats" id="searchCount"></div>
+        <div id="searchResult"></div>
     </div>
-    <div class="header-stats" id="searchCount" style="margin-bottom: 10px;">請稍候，正在同步雲端資料庫...</div>
-    <div id="searchResult"></div>
+
 </div>
 
 <script>
-    // ⚠️ 請將這裡替換成你 GitHub 上 CSV 檔案的 Raw 網址
-    const GITHUB_CSV_URL = 'https://bk-bc.github.io/Barcode/new.csv';
-    
+    // --- 核心資料狀態 ---
+    const CSV_URL = 'https://bk-bc.github.io/Barcode/new.csv';
     let db = []; 
+    let stats = { imported: 0, merged: 0 };
 
-    // --- 網頁載入時自動去 GitHub 抓資料 ---
+    // --- 初始化 ---
     window.onload = async () => {
-        document.getElementById('headerStats').innerText = "狀態：連線至雲端抓取資料中...";
-        await fetchCSV();
+        updateStatsUI();
+        await loadRemoteCSV();
     };
 
-    async function fetchCSV() {
-        try {
-            // 加入快取控制，確保每次抓到的都是最新版
-            const response = await fetch(GITHUB_CSV_URL, { cache: "no-store" });
-            if (!response.ok) throw new Error('網路回應錯誤，請確認網址是否正確。');
-            
-            const csvText = await response.text();
-            parseData(csvText);
-            
-            document.getElementById('headerStats').innerText = `狀態：資料同步完成 | 總筆數 ${db.length}`;
-            populateSearchDropdowns();
-            renderSearch();
-            
-        } catch (error) {
-            console.error(error);
-            document.getElementById('headerStats').innerText = "狀態：載入失敗，請檢查網路連線或 CSV 網址。";
-            document.getElementById('searchCount').innerText = "";
-        }
-    }
-
-    // --- 解析 CSV 資料 ---
-    function parseData(text) {
-        db = [];
-        const lines = text.split('\n');
-        
-        for (let i = 1; i < lines.length; i++) {
-            if (!lines[i].trim()) continue;
-            const parts = lines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-            if (parts.length < 7) continue;
-            
-            let [Type, ID, Name, C1, Expiry, Event, Locked] = parts;
-            
-            // 由於這是純檢視版，我們信任雲端 CSV 已經是被管理員清洗過的乾淨資料
-            db.push({
-                Type: Type.toUpperCase(),
-                ID,
-                Name,
-                C1: C1 || '未分類',
-                Event: cleanArrayStr(Event, Name, ID)
-            });
-        }
-    }
-
-    // --- 工具函式 ---
-    function cleanArrayStr(str, itemName = '', itemID = '') {
+    // --- 共用工具 ---
+    function cleanArrayStr(str, isDate = false, itemName = '', itemID = '') {
         if (!str) return '';
         let arr = str.split('/').map(s => s.trim()).filter(Boolean);
-        const exactMatchRegex = new RegExp(`^(${escapeRegExp(itemName)}|${escapeRegExp(itemID)})$`, 'i');
-        arr = arr.filter(e => !exactMatchRegex.test(e));
+        if (isDate) {
+            // 允許純日期 20260501、帶數量 20260501_3 或 10+ 標記 20260501_10+
+            arr = arr.filter(d => /^20\d{6}(_\d+\+?)?$/.test(d));
+            arr.sort((a, b) => a.substring(0, 8).localeCompare(b.substring(0, 8)));
+        } else {
+            const today = new Date();
+            const expirationDays = 30;
+            arr = arr.filter(e => {
+                const exactMatchRegex = new RegExp(`^(${escapeRegExp(itemName)}|${escapeRegExp(itemID)})$`, 'i');
+                if (exactMatchRegex.test(e)) return false;
+                const dateMatch = e.match(/^(\d{8})_/);
+                if (dateMatch) {
+                    const eventDateStr = dateMatch[1];
+                    if (eventDateStr.substring(0, 2) === "20") {
+                        const year = parseInt(eventDateStr.substring(0, 4));
+                        const month = parseInt(eventDateStr.substring(4, 6)) - 1;
+                        const day = parseInt(eventDateStr.substring(6, 8));
+                        const eventDate = new Date(year, month, day);
+                        if (!isNaN(eventDate.getTime())) {
+                            const diffTime = today - eventDate;
+                            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                            if (diffDays > expirationDays) return false;
+                        }
+                    }
+                }
+                return true;
+            });
+        }
         return [...new Set(arr)].join('/');
     }
 
@@ -146,75 +172,210 @@
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
+    function normalizeBool(value) {
+        return String(value).toLowerCase() === 'true' ? 'True' : 'False';
+    }
+
+    function updateStatsUI() {
+        document.getElementById('headerStats').innerText = `資料統計：總導入 ${stats.imported} | 合併數 ${stats.merged} | 總筆數 ${db.length}`;
+    }
+
     function renderBarcode(targetId, value, format) {
         try {
+            let fmt;
+            if (format === 'EAN13') {
+                fmt = 'EAN13';
+            } else if (format === 'EAN8') {
+                fmt = 'EAN8';
+            } else if (format === 'UPCA') {
+                fmt = 'UPC';        // JsBarcode 的 UPC-A 格式名稱是 'UPC'
+            } else if (format === 'UPCE') {
+                fmt = 'UPCE';       // JsBarcode 支援 UPCE
+            } else if (format === 'I35' || format === 'I24') {
+                fmt = 'EAN8';
+            } else {
+                fmt = 'CODE128';
+            }
             JsBarcode(`#${targetId}`, value, {
-                format: format.includes('EAN') || format.includes('UPC') ? format : 'CODE128',
-                displayValue: true, height: 40, margin: 0, width: 2
+                format: fmt,
+                displayValue: true, height: 35, margin: 0, width: 1.5
             });
         } catch (e) {
             console.error("Barcode error:", e);
         }
     }
 
-    // --- 下拉選單處理 (包含排序) ---
-    function populateSearchDropdowns() {
-        const c1Set = new Set(), eventSet = new Set();
-        db.forEach(item => {
-            if(item.C1) c1Set.add(item.C1);
-            if(item.Event) item.Event.split('/').forEach(e => { if(e) eventSet.add(e); });
+    function upsertItem(newItem) {
+        newItem.Down = normalizeBool(newItem.Down ?? newItem.down);
+        const namePrefix = newItem.Name.substring(0, 6);
+        const isSixDigits = /^\d{6}$/.test(namePrefix);
+        if (!isSixDigits) {
+            console.warn(`過濾無效資料：ID ${newItem.ID} 的 Name "${newItem.Name}" 不符合 6 位數字開頭規則。`);
+            return { imported: 0, merged: 0 }; 
+        }
+        let existing = db.filter(i => i.ID === newItem.ID);
+        if (existing.length === 0) {
+            newItem.Expiry = cleanArrayStr(newItem.Expiry, true);
+            newItem.Event = cleanArrayStr(newItem.Event, false, newItem.Name, newItem.ID);
+            db.push(newItem);
+            return { imported: 1, merged: 0 };
+        }
+        const finalDown = [newItem, ...existing].some(i => normalizeBool(i.Down ?? i.down) === 'True') ? 'True' : 'False';
+        let allExp = newItem.Expiry || "";
+        let allEv = newItem.Event || "";
+        existing.forEach(e => {
+            allExp += "/" + (e.Expiry || "");
+            allEv += "/" + (e.Event || "");
         });
-        
-        let c1Html = `<option value="">C1: 全部搜尋</option>`;
-        [...c1Set].sort((a, b) => a.localeCompare(b, 'zh-TW')).forEach(c => c1Html += `<option value="${c}">${c}</option>`);
-        document.getElementById('searchC1').innerHTML = c1Html;
+        let finalPooledExpiry = cleanArrayStr(allExp, true);
+        newItem.Expiry = finalPooledExpiry;
+        newItem.Event = cleanArrayStr(allEv, false, newItem.Name, newItem.ID);
+        newItem.Down = finalDown;
+        existing.forEach(e => {
+            e.Expiry = finalPooledExpiry;
+            e.Event = cleanArrayStr(allEv, false, e.Name, e.ID);
+            e.Down = finalDown;
+        });
+        let perfectMatch = existing.find(e => e.Name === newItem.Name && e.Type === newItem.Type && e.C1 === newItem.C1);
+        if (perfectMatch) {
+            if (newItem.Locked === 'True') perfectMatch.Locked = 'True';
+            return { imported: 0, merged: 1 };
+        }
+        let lockedExisting = existing.filter(e => e.Locked === 'True');
+        let totalLocks = lockedExisting.length + (newItem.Locked === 'True' ? 1 : 0);
+        if (totalLocks === 0) {
+            db.push(newItem); 
+            return { imported: 1, merged: 0 };
+        } else if (totalLocks === 1) {
+            if (newItem.Locked === 'True') {
+                db = db.filter(i => i.ID !== newItem.ID);
+                db.push(newItem);
+                return { imported: 1, merged: existing.length };
+            } else {
+                return { imported: 0, merged: 1 };
+            }
+        } else {
+            existing.forEach(e => { if(e.Locked === 'True') e.Locked = 'False'; });
+            newItem.Locked = 'False';
+            db.push(newItem);
+            return { imported: 1, merged: 0 };
+        }
+    }
 
+    async function loadRemoteCSV() {
+        document.getElementById('searchCount').innerText = '資料載入中...';
+        try {
+            const response = await fetch(CSV_URL, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            processCSVText(await response.text());
+            populateSearchDropdowns();
+            renderSearch();
+        } catch (error) {
+            console.error('CSV load error:', error);
+            document.getElementById('searchCount').innerText = 'CSV 載入失敗，請稍後再試。';
+        }
+    }
+
+    function processCSVText(csvText) {
+        db = [];
+        stats = { imported: 0, merged: 0 };
+        const lines = csvText.split('\n');
+        let processedCount = 0;
+        let newMergeCount = 0;
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const parts = lines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+            if (parts.length < 7) continue;
+            let [Type, ID, Name, C1, Expiry, Event, Locked, Down] = parts;
+            Type = Type.toUpperCase();
+            Locked = (Locked === 'True') ? 'True' : 'False';
+            Down = normalizeBool(Down);
+            processedCount++;
+            let res = upsertItem({Type, ID, Name, C1, Expiry, Event, Locked, Down});
+            newMergeCount += res.merged;
+        }
+        stats.imported = processedCount;
+        stats.merged = newMergeCount;
+        updateStatsUI();
+    }
+
+    // --- 1. 搜尋功能 ---
+    function populateSearchDropdowns() {
+        const eventSet = new Set();
+        db.forEach(item => {
+            if(item.Event) {
+                item.Event.split('/').forEach(e => { 
+                    if(e) {
+                        const cleanEvent = e.replace(/_\d{3}$/, '');
+                        eventSet.add(cleanEvent); 
+                    }
+                });
+            }
+        });
         let evHtml = `<option value="">Event: 全部搜尋</option>`;
         [...eventSet].sort((a, b) => a.localeCompare(b, 'zh-TW')).forEach(e => evHtml += `<option value="${e}">${e}</option>`);
         document.getElementById('searchEvent').innerHTML = evHtml;
     }
 
-    // --- 搜尋與畫面渲染 ---
     function renderSearch() {
-        const c1 = document.getElementById('searchC1').value;
         const ev = document.getElementById('searchEvent').value;
         const kw1 = document.getElementById('searchKeyword1').value.trim().toLowerCase();
-        const kw2 = document.getElementById('searchKeyword2').value.trim().toLowerCase();
         const resDiv = document.getElementById('searchResult');
         
         resDiv.innerHTML = '';
-
-        if (kw1.length < 1 && kw2.length < 1 && !c1 && !ev) {
-            document.getElementById('searchCount').innerText = '輸入關鍵字或選擇篩選項目開始搜尋...';
+        
+        if (kw1.length < 1 && !ev) {
+            document.getElementById('searchCount').innerText = '輸入關鍵字或選擇篩選項目...';
             return;
         }
 
         let filtered = db.filter(item => {
-            if (c1 && item.C1 !== c1) return false;
-            if (ev && !item.Event.split('/').includes(ev)) return false;
-            let textMatch = (kw1 === '' || item.ID.toLowerCase().includes(kw1) || item.Name.toLowerCase().includes(kw1)) &&
-                            (kw2 === '' || item.ID.toLowerCase().includes(kw2) || item.Name.toLowerCase().includes(kw2));
+            if (ev && !item.Event.split('/').some(e => e.replace(/_\d{3}$/, '') === ev)) return false;
+            let textMatch = kw1 === '' || item.ID.toLowerCase().includes(kw1) || item.Name.toLowerCase().includes(kw1);
             return textMatch;
         });
 
-        document.getElementById('searchCount').innerText = `搜尋結果: 找到 ${filtered.length} 筆 (顯示上限50筆)`;
-        filtered = filtered.slice(0, 50);
+        if (ev) {
+            filtered.sort((a, b) => {
+                const evA = a.Event.split('/').find(e => e.replace(/_\d{3}$/, '') === ev) || '';
+                const evB = b.Event.split('/').find(e => e.replace(/_\d{3}$/, '') === ev) || '';
+                const seqA = evA.match(/_(\d{3})$/) ? parseInt(evA.match(/_(\d{3})$/)[1], 10) : 999;
+                const seqB = evB.match(/_(\d{3})$/) ? parseInt(evB.match(/_(\d{3})$/)[1], 10) : 999;
+                return seqA - seqB;
+            });
+        }
 
-        filtered.forEach((item, idx) => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div>
+        document.getElementById('searchCount').innerText = `剩餘筆數: ${filtered.length > 60 ? '60+' : filtered.length} (顯示上限60筆)`;
+        filtered = filtered.slice(0, 60);
+
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'search-grid-container';
+        resDiv.appendChild(gridContainer);
+
+        // 分成五組，每組12個
+        for (let i = 0; i < 5; i++) {
+            const chunk = filtered.slice(i * 12, (i + 1) * 12);
+            if (chunk.length === 0 && i > 0) break;
+
+            const columnDiv = document.createElement('div');
+            columnDiv.className = 'search-column';
+            gridContainer.appendChild(columnDiv);
+
+            chunk.forEach((item, chunkIdx) => {
+                const globalIdx = (i * 12) + chunkIdx;
+                const isDown = normalizeBool(item.Down ?? item.down) === 'True';
+                const downLabel = isDown ? '<div class="down-label">已下架</div>' : '';
+                const card = document.createElement('div');
+                card.className = isDown ? 'card card-down' : 'card';
+                card.innerHTML = `
+                    ${downLabel}
                     <div class="card-title">${item.Name}</div>
-                    <div class="card-sub">${item.C1} | ${item.Event || '無活動'}</div>
-                </div>
-                <div style="text-align:center; margin-top: 10px;">
-                    <svg id="bc_${idx}" class="barcode"></svg>
-                </div>
-            `;
-            resDiv.appendChild(card);
-            renderBarcode(`bc_${idx}`, item.ID, item.Type);
-        });
+                    <div class="barcode-wrapper"><svg id="bc_${globalIdx}" class="barcode"></svg></div>
+                `;
+                columnDiv.appendChild(card);
+                renderBarcode(`bc_${globalIdx}`, item.ID, item.Type);
+            });
+        }
     }
 </script>
 </body>
